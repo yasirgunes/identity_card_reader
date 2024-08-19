@@ -36,7 +36,7 @@ public class SmartCardReader {
             contactless.waitForCardPresent(0);
             System.out.println("Card inserted. Connecting to card...");
 
-            Card card = contactless.connect("*");
+            Card card = contactless.connect("T=0");
             System.out.println("Connected to card: " + card);
 
             // get the ATR
@@ -46,7 +46,12 @@ public class SmartCardReader {
             CardChannel channel = card.getBasicChannel();
 
             byte[] command = new byte[] {
-                    0x00, (byte) 0xA4, 0x04, 0x00, 0x02, 0x3F, 0x00
+                    (byte) 0x00, // CLA (Class of instruction)
+                    (byte) 0xA4, // INS (Instruction)
+                    (byte) 0x04, // P1  (Parameter 1)
+                    (byte) 0x00, // P2  (Parameter 2)
+                    (byte) 0x02, // Lc  (Length of data)
+                    (byte) 0x3F, (byte) 0x00  // Data (Select MF command)
             };
 
             CommandAPDU commandAPDU = new CommandAPDU(command);
