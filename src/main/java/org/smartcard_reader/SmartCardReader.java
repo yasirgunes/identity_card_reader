@@ -39,7 +39,12 @@ public class SmartCardReader {
             Card card = contactless.connect("*");
             System.out.println("Connected to card: " + card);
 
+            // get the ATR
+            ATR atr = card.getATR();
+            System.out.println("ATR: " + byteArrayToHex(atr.getBytes()));
+
             CardChannel channel = card.getBasicChannel();
+
             byte[] command = new byte[] {
                     0x00, (byte) 0xA4, 0x04, 0x00, 0x02, 0x3F, 0x00
             };
@@ -48,7 +53,12 @@ public class SmartCardReader {
             ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
 
             byte[] responseData = responseAPDU.getData();
-            System.out.println("Response: " + Arrays.toString(responseData));
+            int sw1 = responseAPDU.getSW1();
+            int sw2 = responseAPDU.getSW2();
+
+            System.out.println("Response: " + byteArrayToHex(responseData));
+            System.out.println("SW1: " + Integer.toHexString(sw1));
+            System.out.println("SW2: " + Integer.toHexString(sw2));
 
             card.disconnect(false); // 'false' means no reset of the card
             System.out.println("Disconnected from card.");
@@ -59,12 +69,12 @@ public class SmartCardReader {
         }
     }
 
-    private static String byteArrayToHex(byte[] byteArray) {
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : byteArray) {
-            hexString.append(String.format("%02X ", b));
+    private static String byteArrayToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X", b));
         }
-        return hexString.toString();
+        return sb.toString();
     }
 
 }
