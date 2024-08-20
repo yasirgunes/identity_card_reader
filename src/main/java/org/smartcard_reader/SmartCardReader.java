@@ -28,15 +28,15 @@ public class SmartCardReader {
                 }
 
             }
-            System.out.print("This is the contactless: ");
-            CardTerminal contactless = terminals.get(CONTACTLESS);
+            System.out.print("Connected to CONTACT: ");
+            CardTerminal contactless = terminals.get(CONTACT);
             System.out.println(contactless.getName());
 
             System.out.println("Waiting for a card to be inserted...");
             contactless.waitForCardPresent(0);
             System.out.println("Card inserted. Connecting to card...");
 
-            Card card = contactless.connect("T=0");
+            Card card = contactless.connect("T=1");
             System.out.println("Connected to card: " + card);
 
             // get the ATR
@@ -45,17 +45,22 @@ public class SmartCardReader {
 
             CardChannel channel = card.getBasicChannel();
 
+
             byte[] command = new byte[] {
                     (byte) 0x00, // CLA (Class of instruction)
                     (byte) 0xA4, // INS (Instruction)
-                    (byte) 0x04, // P1  (Parameter 1)
+                    (byte) 0x00, // P1  (Parameter 1)
                     (byte) 0x00, // P2  (Parameter 2)
-                    (byte) 0x02, // Lc  (Length of data)
-                    (byte) 0x3F, (byte) 0x00  // Data (Select MF command)
+                    (byte) 0x02, // Lc
+                    (byte) 0x3F, // Data (First byte of the data field)
+                    (byte) 0x01, // Data (Second byte of the data field)
+                    (byte) 0x00, // Le
             };
+            System.out.println("Sending command: " + byteArrayToHex(command));
 
             CommandAPDU commandAPDU = new CommandAPDU(command);
             ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
+
 
             byte[] responseData = responseAPDU.getData();
             int sw1 = responseAPDU.getSW1();
@@ -65,9 +70,9 @@ public class SmartCardReader {
             System.out.println("SW1: " + Integer.toHexString(sw1));
             System.out.println("SW2: " + Integer.toHexString(sw2));
 
+
             card.disconnect(false); // 'false' means no reset of the card
             System.out.println("Disconnected from card.");
-
 
         } catch (CardException e) {
             System.err.println("Error listing card readers: " + e.getMessage());
@@ -80,6 +85,50 @@ public class SmartCardReader {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
+    }
+
+    public static byte[] convertStringToByteArray(String commandStr) {
+        int len = commandStr.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(commandStr.charAt(i), 16) << 4)
+                    + Character.digit(commandStr.charAt(i+1), 16));
+        }
+        return data;
+    }
+
+    public static void printByteArray(byte[] byteArray) {
+        System.out.println("byte[] command = new byte[] {");
+        for (byte b : byteArray) {
+            System.out.printf("    (byte) 0x%02X, // %s\n", b, getDescription(b));
+        }
+        System.out.println("};");
+    }
+
+    private static String getDescription(byte b) {
+        // Add descriptions based on the byte value if needed
+        // For now, return an empty string
+        return "";
+    }
+
+    public static void send_command(CardChannel channel, String commandStr) {
+        byte[] command = convertStringToByteArray(commandStr);
+        System.out.println("Sending command: " + byteArrayToHex(command));
+
+        CommandAPDU commandAPDU = new CommandAPDU(command);
+        try {
+            ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
+
+            byte[] responseData = responseAPDU.getData();
+            int sw1 = responseAPDU.getSW1();
+            int sw2 = responseAPDU.getSW2();
+
+            System.out.println("Response: " + byteArrayToHex(responseData));
+            System.out.println("SW1: " + Integer.toHexString(sw1));
+            System.out.println("SW2: " + Integer.toHexString(sw2));
+        } catch (CardException e) {
+            System.err.println("Error sending command: " + e.getMessage());
+        }
     }
 
 }
