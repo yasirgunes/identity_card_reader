@@ -1,8 +1,10 @@
 package org.smartcard_reader;
 
 import javax.smartcardio.*;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class SmartCardReader {
@@ -55,31 +57,20 @@ public class SmartCardReader {
             System.out.println("PIN: " + pin);
             send_command(channel, "0020000106" + "313535383832");
 
-            // select file
-            send_command(channel, "00A40100023D1000");
+            // select KD-PKCS
+            send_command(channel, "00A40100023D0000");
 
-            // list dir
-            send_command(channel, "801D000100");
+            //select the file
+            send_command(channel, "00A40200022F0400");
 
-            // select file
-            send_command(channel, "00A40100023D3000");
+            // read the file
+            String response = send_command(channel, "00B0000000");
+            System.out.println("Response: " + response);
 
-            // list dir
-            send_command(channel, "801D000000");
-
-//            for(int i = 1; i < 40; i++) {
-//                send_command(channel, "801D00"+ byteToHex((byte)i) +"00");
-//            }
-
-            // select file
-            send_command(channel, "00A40200022F1200");
-
-
-            // select file
-            // send_command(channel, "00A40200023D3000");
-
-            // read binary file
-             send_command(channel, "00B0000000");
+            // get the citizen info
+//            String [] citizenInfo = new SmartCardReader().getCitizenInfo(response);
+//            System.out.println("TCKN: " + citizenInfo[0]);
+//            System.out.println("Name: " + citizenInfo[1]);
 
 
             card.disconnect(false); // 'false' means no reset of the card
@@ -122,38 +113,42 @@ public class SmartCardReader {
         return "";
     }
 
-    private static void transmitCommand(CardChannel channel, CommandAPDU commandAPDU) {
+    private static String transmitCommand(CardChannel channel, CommandAPDU commandAPDU) {
+        byte[] responseData;
+        String response_in_UTF8 = "";
         try {
             ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
 
-            byte[] responseData = responseAPDU.getData();
+            responseData = responseAPDU.getData();
             int sw1 = responseAPDU.getSW1();
             int sw2 = responseAPDU.getSW2();
 
             System.out.println("Response: " + byteArrayToHex(responseData));
             System.out.println("SW1: " + Integer.toHexString(sw1));
             System.out.println("SW2: " + Integer.toHexString(sw2));
+            response_in_UTF8 = new String(responseData);
         } catch (CardException e) {
             System.err.println("Error sending command: " + e.getMessage());
         }
+        return response_in_UTF8;
     }
 
-    public static void send_command(CardChannel channel, String commandStr) {
+    public static String send_command(CardChannel channel, String commandStr) {
         System.out.println();
         byte[] command = convertStringToByteArray(commandStr);
         System.out.println("Sending command: " + byteArrayToHex(command));
 
         CommandAPDU commandAPDU = new CommandAPDU(command);
-        transmitCommand(channel, commandAPDU);
         System.out.println();
+        return transmitCommand(channel, commandAPDU);
     }
 
-    public static void send_command(CardChannel channel, byte cla, byte ins, byte p1, byte p2, byte [] data) {
+    public static String send_command(CardChannel channel, byte cla, byte ins, byte p1, byte p2, byte [] data) {
         System.out.println();
         System.out.println("Sending command: " + byteToHex(cla) + " " + byteToHex(ins) + " " + byteToHex(p1) + " " + byteToHex(p2) + " " + byteArrayToHex(data));
         CommandAPDU commandAPDU = new CommandAPDU(cla, ins, p1, p2, data);
 
-        transmitCommand(channel, commandAPDU);
+        return transmitCommand(channel, commandAPDU);
     }
 
     public static String byteToHex(byte b) {
@@ -165,5 +160,34 @@ public class SmartCardReader {
         System.out.println("Sending command: " + commandAPDU.toString());
         transmitCommand(channel, commandAPDU);
         System.out.println();
+    }
+
+    public String [] getCitizenInfo(String responseInUTF8) {
+        String tckn = extractTCKN(responseInUTF8);
+        String name = extractName(responseInUTF8);
+
+        return new String[]{tckn, name};
+    }
+    // Method to extract TCKN
+    public static String extractTCKN(String text) {
+        Pattern tcknPattern = Pattern.compile("\\d{11}");
+        Matcher matcher = tcknPattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return "TCKN not found";
+    }
+
+    // Method to extract Name
+    public static String extractName(String text) {
+        // Split the input text by "TR1604"
+        String[] parts = text.split("TR1604");
+        // Regular expression to match the name pattern
+        Pattern namePattern = Pattern.compile("([A-ZÇĞİÖŞÜ]+\\s){1,4}[A-ZÇĞİÖŞÜ]+");
+        Matcher matcher = namePattern.matcher(parts[0]);
+        if (matcher.find()) {
+            return matcher.group().trim();
+        }
+        return "Name not found";
     }
 }
