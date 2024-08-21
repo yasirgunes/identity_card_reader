@@ -46,29 +46,40 @@ public class SmartCardReader {
             CardChannel channel = card.getBasicChannel();
 
 
-            byte[] command = new byte[] {
-                    (byte) 0x00, // CLA (Class of instruction)
-                    (byte) 0xA4, // INS (Instruction)
-                    (byte) 0x00, // P1  (Parameter 1)
-                    (byte) 0x00, // P2  (Parameter 2)
-                    (byte) 0x02, // Lc
-                    (byte) 0x3F, // Data (First byte of the data field)
-                    (byte) 0x01, // Data (Second byte of the data field)
-                    (byte) 0x00, // Le
-            };
-            System.out.println("Sending command: " + byteArrayToHex(command));
-
-            CommandAPDU commandAPDU = new CommandAPDU(command);
-            ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
+            // select the master file
+            send_command(channel, "00A40000023F0000");
 
 
-            byte[] responseData = responseAPDU.getData();
-            int sw1 = responseAPDU.getSW1();
-            int sw2 = responseAPDU.getSW2();
+            // verify pin
+            String pin = "155882";
+            System.out.println("PIN: " + pin);
+            send_command(channel, "0020000106" + "313535383832");
 
-            System.out.println("Response: " + byteArrayToHex(responseData));
-            System.out.println("SW1: " + Integer.toHexString(sw1));
-            System.out.println("SW2: " + Integer.toHexString(sw2));
+            // select file
+            send_command(channel, "00A40100023D1000");
+
+            // list dir
+            send_command(channel, "801D000100");
+
+            // select file
+            send_command(channel, "00A40100023D3000");
+
+            // list dir
+            send_command(channel, "801D000000");
+
+//            for(int i = 1; i < 40; i++) {
+//                send_command(channel, "801D00"+ byteToHex((byte)i) +"00");
+//            }
+
+            // select file
+            send_command(channel, "00A40200022F1200");
+
+
+            // select file
+            // send_command(channel, "00A40200023D3000");
+
+            // read binary file
+             send_command(channel, "00B0000000");
 
 
             card.disconnect(false); // 'false' means no reset of the card
@@ -82,7 +93,7 @@ public class SmartCardReader {
     private static String byteArrayToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
-            sb.append(String.format("%02X", b));
+            sb.append(String.format("%02X ", b));
         }
         return sb.toString();
     }
@@ -111,11 +122,7 @@ public class SmartCardReader {
         return "";
     }
 
-    public static void send_command(CardChannel channel, String commandStr) {
-        byte[] command = convertStringToByteArray(commandStr);
-        System.out.println("Sending command: " + byteArrayToHex(command));
-
-        CommandAPDU commandAPDU = new CommandAPDU(command);
+    private static void transmitCommand(CardChannel channel, CommandAPDU commandAPDU) {
         try {
             ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
 
@@ -131,4 +138,32 @@ public class SmartCardReader {
         }
     }
 
+    public static void send_command(CardChannel channel, String commandStr) {
+        System.out.println();
+        byte[] command = convertStringToByteArray(commandStr);
+        System.out.println("Sending command: " + byteArrayToHex(command));
+
+        CommandAPDU commandAPDU = new CommandAPDU(command);
+        transmitCommand(channel, commandAPDU);
+        System.out.println();
+    }
+
+    public static void send_command(CardChannel channel, byte cla, byte ins, byte p1, byte p2, byte [] data) {
+        System.out.println();
+        System.out.println("Sending command: " + byteToHex(cla) + " " + byteToHex(ins) + " " + byteToHex(p1) + " " + byteToHex(p2) + " " + byteArrayToHex(data));
+        CommandAPDU commandAPDU = new CommandAPDU(cla, ins, p1, p2, data);
+
+        transmitCommand(channel, commandAPDU);
+    }
+
+    public static String byteToHex(byte b) {
+        return String.format("%02X", b);
+    }
+
+    public static void send_APDU_command(CardChannel channel, CommandAPDU commandAPDU) {
+        System.out.println();
+        System.out.println("Sending command: " + commandAPDU.toString());
+        transmitCommand(channel, commandAPDU);
+        System.out.println();
+    }
 }
