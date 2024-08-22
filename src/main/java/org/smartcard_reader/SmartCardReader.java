@@ -124,7 +124,7 @@ public class SmartCardReader {
             send_command(channel, "00A40000023F0000");
 
             // select folder under the mf
-            send_command(channel, "00A40000023D0000");
+            send_command(channel, "00A40100023D0000");
 
             // verify pin
             String pin = "155882";
@@ -144,9 +144,10 @@ public class SmartCardReader {
             //      then sign it
             send_command(channel, "002A9E9A" + "33" + "3031300D060960864801650304020105000420" + byteArrayToHex(hash) + "00");
 
-//            System.out.println("TCKN: " + citizenInfo.get(0));
-//            System.out.println("Name: " + citizenInfo.get(1));
-//            System.out.println("Serial Number: " + citizenInfo.get(2));
+
+            System.out.println("TCKN: " + citizenInfo.get(0));
+            System.out.println("Name: " + citizenInfo.get(1));
+            System.out.println("Serial Number: " + citizenInfo.get(2));
 
 
             card.disconnect(false); // 'false' means no reset of the card
