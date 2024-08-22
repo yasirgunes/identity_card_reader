@@ -67,9 +67,9 @@ public class SmartCardReader {
 
 
             // verify pin
-//            String pin = "155882";
-//            System.out.println("PIN: " + pin);
-//            send_command(channel, "0020000106" + "313535383832");
+            String pin = "155882";
+            System.out.println("PIN: " + pin);
+            send_command(channel, "0020000106" + "313535383832");
 
             // select KD-PKCS
             send_command(channel, "00A40100023D0000");
@@ -104,9 +104,21 @@ public class SmartCardReader {
             send_command(channel, "00A40200022F5300");
 
             // read the file
-            String cert = send_command(channel, "00B0000000");
-            X509Certificate certificate = getCertificateFromString(cert);
-            verifyCertificate(certificate);
+            String cert1 = send_command(channel, "00B0000000");
+            String cert2 = send_command(channel, "00B0020000");
+            String cert3 = send_command(channel, "00B0040000");
+            String cert4 = send_command(channel, "00B0060000");
+            String cert5 = send_command(channel, "00B0080000");
+
+            // Concatenate the certificate parts
+            String certStr = cert1 + cert2 + cert3 + cert4 + cert5;
+            System.out.println("Certificate: " + certStr);
+
+            // Get the X509Certificate object from the certificate string
+            X509Certificate cert = getCertificateFromString(certStr);
+            // Verify the certificate
+            verifyCertificate(cert);
+
 
 
 //            System.out.println("TCKN: " + citizenInfo.get(0));
@@ -166,6 +178,7 @@ public class SmartCardReader {
             int sw1 = responseAPDU.getSW1();
             int sw2 = responseAPDU.getSW2();
 
+            System.out.println("Response data length: " + responseData.length);
             System.out.println("SW1: " + Integer.toHexString(sw1));
             System.out.println("SW2: " + Integer.toHexString(sw2));
             System.out.println("Response: " + byteArrayToHex(responseData));
