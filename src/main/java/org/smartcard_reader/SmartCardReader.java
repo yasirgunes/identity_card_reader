@@ -67,10 +67,10 @@ public class SmartCardReader {
             send_command(channel, "00A40000023F0000");
 
 
-            // verify pin
-            String pin = "155882";
-            System.out.println("PIN: " + pin);
-            send_command(channel, "0020000106" + "313535383832");
+//            // verify pin
+//            String pin = "155882";
+//            System.out.println("PIN: " + pin);
+//            send_command(channel, "0020000106" + "313535383832");
 
             // select KD-PKCS
             send_command(channel, "00A40100023D0000");
@@ -120,6 +120,17 @@ public class SmartCardReader {
             // Verify the certificate
             verifyCertificate(cert);
 
+            // select mf
+            send_command(channel, "00A40000023F0000");
+
+            // select folder under the mf
+            send_command(channel, "00A40100023D0100");
+
+            // verify pin
+            String pin = "155882";
+            System.out.println("PIN: " + pin);
+            send_command(channel, "0020000106" + "313535383832");
+
             //-------------- sign the data ----------------
             System.out.println("Signing the data...");
 
@@ -128,14 +139,21 @@ public class SmartCardReader {
             String data_to_sign = "Hello World";
             byte[] hash = hashData(data_to_sign.getBytes(StandardCharsets.UTF_8));
 
-            for(int i = 1; i < 32; i++) {
-                // set MSE
-                send_command(channel, "002241B6068001918401" + "11");
-            }
+//            for(int i = 1; i < 33; i++) {
+//                // set MSE
+//                send_command(channel, "002241B6068001918401" + byteToHex((byte) i) + "00");
+//                //      then sign it
+//                send_command(channel, "002A9E9A20" + byteArrayToHex(hash) + "00");
+//            }
+            // set MSE
+            send_command(channel, "002241AA03"+ "800102");
 
+//            //      then sign it
+//            send_command(channel, "002A9E9A20" + byteArrayToHex(hash) + "00");
 
-            //      then sign it
-            send_command(channel, "002A9E9A20" + byteArrayToHex(hash) + "00");
+            // compute hash code
+            send_command(channel, "002A9080" + "0B" + "48656C6C6F20576F726C64" + "00");
+
 
 
 //            System.out.println("TCKN: " + citizenInfo.get(0));
