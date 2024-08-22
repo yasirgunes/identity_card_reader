@@ -123,12 +123,16 @@ public class SmartCardReader {
             //-------------- sign the data ----------------
             System.out.println("Signing the data...");
 
-            // set MSE
-            send_command(channel, "002241B606800191840101");
 
             //      first hash it
             String data_to_sign = "Hello World";
             byte[] hash = hashData(data_to_sign.getBytes(StandardCharsets.UTF_8));
+
+            for(int i = 1; i < 32; i++) {
+                // set MSE
+                send_command(channel, "002241B6068001918401" + "11");
+            }
+
 
             //      then sign it
             send_command(channel, "002A9E9A20" + byteArrayToHex(hash) + "00");
