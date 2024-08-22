@@ -1,5 +1,6 @@
 package org.smartcard_reader;
 
+
 import javax.smartcardio.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -119,6 +120,18 @@ public class SmartCardReader {
             // Verify the certificate
             verifyCertificate(cert);
 
+            //-------------- sign the data ----------------
+            System.out.println("Signing the data...");
+
+            // set MSE
+            send_command(channel, "002241B606800191840101");
+
+            //      first hash it
+            String data_to_sign = "Hello World";
+            byte[] hash = hashData(data_to_sign.getBytes(StandardCharsets.UTF_8));
+
+            //      then sign it
+            send_command(channel, "002A9E9A20" + byteArrayToHex(hash) + "00");
 
 
 //            System.out.println("TCKN: " + citizenInfo.get(0));
@@ -139,7 +152,7 @@ public class SmartCardReader {
     private static String byteArrayToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
-            sb.append(String.format("%02X ", b));
+            sb.append(String.format("%02X", b));
         }
         return sb.toString();
     }
