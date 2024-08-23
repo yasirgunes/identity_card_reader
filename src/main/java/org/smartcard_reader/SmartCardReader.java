@@ -5,6 +5,7 @@ import javax.smartcardio.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.Signature;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -113,6 +114,7 @@ public class SmartCardReader {
 
             // Concatenate the certificate parts
             String certStr = cert1 + cert2 + cert3 + cert4 + cert5;
+            // change the char at index 55 to 'A'
             System.out.println("Certificate: " + certStr);
 
             // Get the X509Certificate object from the certificate string
@@ -137,13 +139,19 @@ public class SmartCardReader {
 
             //      first hash it
             String data_to_sign = "Hello World";
-            byte[] hash = hashData(data_to_sign.getBytes(StandardCharsets.UTF_8));
-//                send_command(channel, "002241B6" + "06"+ "800182840102" + "00");
+            byte[] hash = hashData(data_to_sign.getBytes());
 
+            // MSE:SET
             send_command(channel, "002241B6" + "06"+ "800182840181" + "00");
-            //      then sign it
+            // then sign it
             byte[] response_data = send_command_byte(channel, "002A9E9A" + "33" + "3031300D060960864801650304020105000420" + byteArrayToHex(hash) + "00");
+            System.out.println("The size of the hashed data: " + byteArrayToHex(hash).length());
+            System.out.println("The hashed data: " + byteArrayToHex(hash));
 
+
+            // Verify the signature
+            boolean isVerified = verifySignature(cert, response_data, hash);
+            System.out.println("Signature verified: " + isVerified);
 
 
 
@@ -160,6 +168,14 @@ public class SmartCardReader {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static boolean verifySignature(X509Certificate cert, byte[] signatureBytes, byte[] data) throws Exception {
+        // Extract the public key from the certificate
+        Signature signature = Signature.getInstance("SHA256withRSA");
+        signature.initVerify(cert.getPublicKey());
+        signature.update(data);
+        return signature.verify(signatureBytes);
     }
 
     private static String byteArrayToHex(byte[] bytes) {
