@@ -1,10 +1,11 @@
 package org.smartcard_reader;
 
-
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import javax.smartcardio.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.Security;
 import java.security.Signature;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -22,6 +23,7 @@ public class SmartCardReader {
     private static final int CONTACTLESS = 1;
 
     public static void main(String[] args) {
+        Security.addProvider(new BouncyCastleProvider());
         try {
             // Get the default terminal factory
             TerminalFactory factory = TerminalFactory.getDefault();
@@ -147,7 +149,8 @@ public class SmartCardReader {
             byte[] response_data = send_command_byte(channel, "002A9E9A" + "33" + "3031300D060960864801650304020105000420" + byteArrayToHex(hash) + "00");
             System.out.println("The size of the hashed data: " + byteArrayToHex(hash).length());
             System.out.println("The hashed data: " + byteArrayToHex(hash));
-
+            System.out.println("The response data: " + byteArrayToHex(response_data));
+            System.out.println("The size of the response data: " + byteArrayToHex(response_data).length());
 
             // Verify the signature
             boolean isVerified = verifySignature(cert, response_data, hash);
@@ -175,6 +178,7 @@ public class SmartCardReader {
         Signature signature = Signature.getInstance("SHA256withRSA");
         signature.initVerify(cert.getPublicKey());
         signature.update(data);
+        System.out.println("The size of the data: " + data.length);
         return signature.verify(signatureBytes);
     }
 
