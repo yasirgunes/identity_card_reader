@@ -142,12 +142,14 @@ public class SmartCardReader {
 
             send_command(channel, "002241B6" + "06"+ "800182840181" + "00");
             //      then sign it
-            send_command(channel, "002A9E9A" + "33" + "3031300D060960864801650304020105000420" + byteArrayToHex(hash) + "00");
+            byte[] response_data = send_command_byte(channel, "002A9E9A" + "33" + "3031300D060960864801650304020105000420" + byteArrayToHex(hash) + "00");
 
 
-            System.out.println("TCKN: " + citizenInfo.get(0));
-            System.out.println("Name: " + citizenInfo.get(1));
-            System.out.println("Serial Number: " + citizenInfo.get(2));
+
+
+//            System.out.println("TCKN: " + citizenInfo.get(0));
+//            System.out.println("Name: " + citizenInfo.get(1));
+//            System.out.println("Serial Number: " + citizenInfo.get(2));
 
 
             card.disconnect(false); // 'false' means no reset of the card
@@ -212,6 +214,25 @@ public class SmartCardReader {
         }
         return response_in_UTF8;
     }
+    private static byte [] transmitCommand_byte(CardChannel channel, CommandAPDU commandAPDU) {
+        byte[] responseData = null;
+        String response_in_UTF8 = "";
+        try {
+            ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
+
+            responseData = responseAPDU.getData();
+            int sw1 = responseAPDU.getSW1();
+            int sw2 = responseAPDU.getSW2();
+
+            System.out.println("Response data length: " + responseData.length);
+            System.out.println("SW1: " + Integer.toHexString(sw1));
+            System.out.println("SW2: " + Integer.toHexString(sw2));
+            System.out.println("Response: " + byteArrayToHex(responseData));
+        } catch (CardException e) {
+            System.err.println("Error sending command: " + e.getMessage());
+        }
+        return responseData;
+    }
 
     public static String send_command(CardChannel channel, String commandStr) {
         System.out.println();
@@ -221,6 +242,16 @@ public class SmartCardReader {
         CommandAPDU commandAPDU = new CommandAPDU(command);
         System.out.println();
         return transmitCommand(channel, commandAPDU);
+    }
+
+    public static byte [] send_command_byte(CardChannel channel, String commandStr) {
+        System.out.println();
+        byte[] command = convertStringToByteArray(commandStr);
+        System.out.println("Sending command: " + byteArrayToHex(command));
+
+        CommandAPDU commandAPDU = new CommandAPDU(command);
+        System.out.println();
+        return transmitCommand_byte(channel, commandAPDU);
     }
 
     public static String send_command(CardChannel channel, byte cla, byte ins, byte p1, byte p2, byte [] data) {
