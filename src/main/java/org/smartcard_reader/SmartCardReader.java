@@ -139,11 +139,11 @@ public class SmartCardReader {
             System.out.println("Signing the data...");
 
 
-            //      first hash it
+            // first hash it
             String data_to_sign = "Hello World";
             byte[] hash = hashData(data_to_sign.getBytes());
 
-            // Tanıtıcı dizi ve hash'i birleştirin
+            // concatenate the hash with the algorithm identifier
             String taniticiDizi = "3031300D060960864801650304020105000420";
             byte[] fullHash = concatenate(hexStringToByteArray(taniticiDizi), hash);
 
@@ -156,7 +156,7 @@ public class SmartCardReader {
 
             // Verify the signature
             boolean isVerified = verifySignature(cert, response_data, hash);
-            System.out.println("Signature verified: " + isVerified);
+            System.out.println("\nSignature verified: " + isVerified);
 
 
 
@@ -179,10 +179,6 @@ public class SmartCardReader {
         // BouncyCastle ile Signature instance'ı oluşturuluyor
         Signature signature = Signature.getInstance("SHA256withRSA", "BC");
         signature.initVerify(cert.getPublicKey());
-
-//        // Algoritma tanıtıcı dizisini hash'in önüne ekleyin
-//        String taniticiDizi = "3031300D060960864801650304020105000420";
-//        byte[] fullHash = concatenate(hexStringToByteArray(taniticiDizi), data);
 
         // Veriyi imza doğrulama işlemine ekleyin
         signature.update(data);
@@ -257,6 +253,10 @@ public class SmartCardReader {
             System.out.println("SW1: " + Integer.toHexString(sw1));
             System.out.println("SW2: " + Integer.toHexString(sw2));
             System.out.println("Response: " + byteArrayToHex(responseData));
+            System.out.println("Response as bytes: ");
+            for(byte b : responseData){
+                System.out.print(b);
+            }
         } catch (CardException e) {
             System.err.println("Error sending command: " + e.getMessage());
         }
