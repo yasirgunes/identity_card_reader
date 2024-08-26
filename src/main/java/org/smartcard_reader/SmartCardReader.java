@@ -143,14 +143,16 @@ public class SmartCardReader {
             String data_to_sign = "Hello World";
             byte[] hash = hashData(data_to_sign.getBytes());
 
+            // Tanıtıcı dizi ve hash'i birleştirin
+            String taniticiDizi = "3031300D060960864801650304020105000420";
+            byte[] fullHash = concatenate(hexStringToByteArray(taniticiDizi), hash);
+
             // MSE:SET
-            send_command(channel, "002241B6" + "06"+ "800182840181" + "00");
+            send_command(channel, "002241B6" + "06" + "800182840181" + "00");
+
             // then sign it
-            byte[] response_data = send_command_byte(channel, "002A9E9A" + "33" + "3031300D060960864801650304020105000420" + byteArrayToHex(hash) + "00");
-            System.out.println("The size of the hashed data: " + byteArrayToHex(hash).length());
-            System.out.println("The hashed data: " + byteArrayToHex(hash));
-            System.out.println("The response data: " + byteArrayToHex(response_data));
-            System.out.println("The size of the response data: " + byteArrayToHex(response_data).length());
+            byte[] response_data = send_command_byte(channel, "002A9E9A" + "33" + byteArrayToHex(fullHash) + "00");
+
 
             // Verify the signature
             boolean isVerified = verifySignature(cert, response_data, hash);
@@ -158,9 +160,9 @@ public class SmartCardReader {
 
 
 
-//            System.out.println("TCKN: " + citizenInfo.get(0));
-//            System.out.println("Name: " + citizenInfo.get(1));
-//            System.out.println("Serial Number: " + citizenInfo.get(2));
+            System.out.println("\nTCKN: " + citizenInfo.get(0));
+            System.out.println("Name: " + citizenInfo.get(1));
+            System.out.println("Serial Number: " + citizenInfo.get(2));
 
 
             card.disconnect(false); // 'false' means no reset of the card
@@ -174,11 +176,18 @@ public class SmartCardReader {
     }
 
     public static boolean verifySignature(X509Certificate cert, byte[] signatureBytes, byte[] data) throws Exception {
-        // Extract the public key from the certificate
-        Signature signature = Signature.getInstance("SHA256withRSA");
+        // BouncyCastle ile Signature instance'ı oluşturuluyor
+        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
         signature.initVerify(cert.getPublicKey());
+
+//        // Algoritma tanıtıcı dizisini hash'in önüne ekleyin
+//        String taniticiDizi = "3031300D060960864801650304020105000420";
+//        byte[] fullHash = concatenate(hexStringToByteArray(taniticiDizi), data);
+
+        // Veriyi imza doğrulama işlemine ekleyin
         signature.update(data);
-        System.out.println("The size of the data: " + data.length);
+
+        // İmzanın doğruluğunu kontrol edin
         return signature.verify(signatureBytes);
     }
 
@@ -340,7 +349,7 @@ public class SmartCardReader {
                 .replaceAll("\\s", ""); // Remove newlines and spaces
 
         byte[] certBytes = Base64.getDecoder().decode(cleanedCertStr);
-        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+        CertificateFactory certFactory = CertificateFactory.getInstance("X.509", "BC");
         return (X509Certificate) certFactory.generateCertificate(new ByteArrayInputStream(certBytes));
     }
 
@@ -351,17 +360,6 @@ public class SmartCardReader {
     public static byte[] hashData(byte[] data) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         return digest.digest(data);
-    }
-
-    public static byte[] signData(CardChannel channel, byte[] hash) throws Exception {
-        // Example APDU command to sign data
-        String commandStr = "00 2A 9E 9A"; // Example command header for a signing operation, adjust as necessary
-        byte[] command = concatenate(hexStringToByteArray(commandStr), hash);
-        CommandAPDU signCommand = new CommandAPDU(command);
-
-        // Transmit the signing command to the smart card
-        ResponseAPDU response = channel.transmit(signCommand);
-        return response.getData(); // The signature
     }
 
     private static byte[] concatenate(byte[] a, byte[] b) {
