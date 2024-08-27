@@ -1,14 +1,24 @@
 package org.smartcard_reader;
 
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.engines.RSABlindedEngine;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.crypto.signers.PSSSigner;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
+
 import javax.smartcardio.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.MGF1ParameterSpec;
+import java.security.spec.PSSParameterSpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -104,23 +114,55 @@ public class SmartCardReader {
             // select mf
             send_command(channel, "00A40000023F0000");
 
+            // select folder under the mf
+            send_command(channel, "00A40100023D0000");
+
             // elementary file select
-            send_command(channel, "00A40200022F5300");
+            send_command(channel, "00A40200022F1000");
+
+            System.out.println("READING CERTIFICATE...");
 
             // read the file
-            String cert1 = send_command(channel, "00B0000000");
-            String cert2 = send_command(channel, "00B0020000");
-            String cert3 = send_command(channel, "00B0040000");
-            String cert4 = send_command(channel, "00B0060000");
-            String cert5 = send_command(channel, "00B0080000");
+//            String cert1 = send_command(channel, "00B00000d0");
+//            String cert2 = send_command(channel, "00B000d0d0");
+//            String cert3 = send_command(channel, "00B001a0d0");
+//            String cert4 = send_command(channel, "00B00270d0");
+//            String cert5 = send_command(channel, "00B00340d0");
+//            String cert6 = send_command(channel, "00B00410d0");
+//            String cert7 = send_command(channel, "00B004e0d0");
+//            String cert8 = send_command(channel, "00B005b0d0");
+//            String cert9 = send_command(channel, "00B0068048");
+            byte [] cert1 = send_command_byte(channel, "00B00000d0");
+            byte [] cert2 = send_command_byte(channel, "00B000d0d0");
+            byte [] cert3 = send_command_byte(channel, "00B001a0d0");
+            byte [] cert4 = send_command_byte(channel, "00B00270d0");
+            byte [] cert5 = send_command_byte(channel, "00B00340d0");
+            byte [] cert6 = send_command_byte(channel, "00B00410d0");
+            byte [] cert7 = send_command_byte(channel, "00B004e0d0");
+            byte [] cert8 = send_command_byte(channel, "00B005b0d0");
+            byte [] cert9 = send_command_byte(channel, "00B0068048");
+
+            // concat
+            byte [] cert0 = concatenate(cert1, cert2);
+            cert0 = concatenate(cert0, cert3);
+            cert0 = concatenate(cert0, cert4);
+            cert0 = concatenate(cert0, cert5);
+            cert0 = concatenate(cert0, cert6);
+            cert0 = concatenate(cert0, cert7);
+            cert0 = concatenate(cert0, cert8);
+            cert0 = concatenate(cert0, cert9);
+
+            System.out.println();
 
             // Concatenate the certificate parts
-            String certStr = cert1 + cert2 + cert3 + cert4 + cert5;
+//            String certStr = cert1 + cert2 + cert3 + cert4 + cert5 + cert6 + cert7 + cert8 + cert9;
             // change the char at index 55 to 'A'
-            System.out.println("Certificate: " + certStr);
+//            System.out.println("Certificate: " + certStr);
 
             // Get the X509Certificate object from the certificate string
-            X509Certificate cert = getCertificateFromString(certStr);
+            X509Certificate cert = getCertificateFromString(cert0);
+
+
             // Verify the certificate
             verifyCertificate(cert);
 
@@ -142,24 +184,29 @@ public class SmartCardReader {
             // first hash it
             String data_to_sign = "Hello World";
             byte[] hash = hashData(data_to_sign.getBytes());
+            System.out.println("DATA TO SIGN bytes: " + byteArrayToHex(data_to_sign.getBytes()));
+
+            System.out.println("HASHED DATA: " + byteArrayToHex(hash));
 
             // concatenate the hash with the algorithm identifier
             String taniticiDizi = "3031300D060960864801650304020105000420";
             byte[] fullHash = concatenate(hexStringToByteArray(taniticiDizi), hash);
 
+            System.out.println("CONCATENATED HASH: " + byteArrayToHex(fullHash));
+
             // MSE:SET
-            send_command(channel, "002241B6" + "06" + "800182840181" + "00");
+            send_command(channel, "002241B6" + "06" + "800191840181");
 
             // then sign it
-            byte[] response_data = send_command_byte(channel, "002A9E9A" + "33" + byteArrayToHex(fullHash) + "00");
+            byte[] response_data = send_command_byte(channel, "002A9E9A" + "20" + byteArrayToHex(hash) + "00");
 
+            System.out.println("bytearraytohex hash: " + byteArrayToHex(hash));
 
             // Verify the signature
-            boolean isVerified = verifySignature(cert, response_data, hash);
+            boolean isVerified = verifySignature(Hex.decode("7130D2321CF0FD1FDB474A5263A3497A37CC7DFDA7AFC41C2B97398C870D58FC6D4C2726E61B86F847BE5A055F3882F0CD635F7B2D6404544CDEC57AB13CE3091E57C609712FE36EA875EE015630C30A89FFE18985F46C00DF4B2242BE3C716F5994676F6B0388E7DD74F2F0BBBCAC52A885679871A59426961D4E61BE0680F30BE10CDC44B47B71F5C3BB3000454C31F5EE59B042D9E6DA8DABFCD873A7F7A5E53F9DF474E521A7D1D5A0F16B29F51AF77D9D9D5D01434E765F420FDA5491E0894F054A94FAAF1C39D4D6A7FF8509F72F3308FA73843A23A9093CE40A237638F0F84EF56E23D29D0DC2D9F250AE4EB2B9329FDD6BB72A3589E2F00A53218A7B"), Hex.decode("48656C6C6F20576F726C64"), cert);
             System.out.println("\nSignature verified: " + isVerified);
 
-
-
+            // Print the citizen information
             System.out.println("\nTCKN: " + citizenInfo.get(0));
             System.out.println("Name: " + citizenInfo.get(1));
             System.out.println("Serial Number: " + citizenInfo.get(2));
@@ -175,16 +222,37 @@ public class SmartCardReader {
         }
     }
 
-    public static boolean verifySignature(X509Certificate cert, byte[] signatureBytes, byte[] data) throws Exception {
-        // BouncyCastle ile Signature instance'ı oluşturuluyor
-        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
-        signature.initVerify(cert.getPublicKey());
+//    public static boolean verifySignature(X509Certificate cert, byte[] signatureBytes, byte[] data) throws Exception {
+//        // BouncyCastle ile Signature instance'ı oluşturuluyor
+//
+//        Signature signature = Signature.getInstance("RSASSA-PSS");
+//        PSSParameterSpec pssSpec = new PSSParameterSpec(
+//                "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+//        );
+//        signature.setParameter(pssSpec);
+//        PublicKey publicKey = cert.getPublicKey();
+//        signature.initVerify(publicKey);
+//
+//        // Veriyi imza doğrulama işlemine ekleyin
+//        signature.update(data);
+//
+//        // İmzanın doğruluğunu kontrol edin
+//        return signature.verify(signatureBytes);
+//    }
 
-        // Veriyi imza doğrulama işlemine ekleyin
-        signature.update(data);
+    public static boolean verifySignature(byte[] signedData, byte[] rawData, X509Certificate certificate) throws Exception
+    {
+        Security.addProvider(new BouncyCastleProvider());
 
-        // İmzanın doğruluğunu kontrol edin
-        return signature.verify(signatureBytes);
+        //İmzalı verinin doğrulanması
+        RSAPublicKey kdPublicKey = (RSAPublicKey) certificate.getPublicKey();
+        RSAKeyParameters rsaPublicKey = new RSAKeyParameters(false, kdPublicKey.getModulus(), kdPublicKey.getPublicExponent());
+        //SHA256withRSAandMGF1
+        SHA256Digest sha256Digest = new SHA256Digest();
+        PSSSigner pssSigner = new PSSSigner(new RSABlindedEngine(), sha256Digest, sha256Digest.getDigestSize(), PSSSigner.TRAILER_IMPLICIT);
+        pssSigner.init(false, rsaPublicKey);
+        pssSigner.update(rawData, 0, rawData.length);
+        return pssSigner.verifySignature(signedData);
     }
 
     private static String byteArrayToHex(byte[] bytes) {
@@ -241,7 +309,6 @@ public class SmartCardReader {
     }
     private static byte [] transmitCommand_byte(CardChannel channel, CommandAPDU commandAPDU) {
         byte[] responseData = null;
-        String response_in_UTF8 = "";
         try {
             ResponseAPDU responseAPDU = channel.transmit(commandAPDU);
 
@@ -253,10 +320,7 @@ public class SmartCardReader {
             System.out.println("SW1: " + Integer.toHexString(sw1));
             System.out.println("SW2: " + Integer.toHexString(sw2));
             System.out.println("Response: " + byteArrayToHex(responseData));
-            System.out.println("Response as bytes: ");
-            for(byte b : responseData){
-                System.out.print(b);
-            }
+
         } catch (CardException e) {
             System.err.println("Error sending command: " + e.getMessage());
         }
@@ -343,12 +407,12 @@ public class SmartCardReader {
         return "Serial number not found";
     }
 
-    public static X509Certificate getCertificateFromString(String certStr) throws Exception {
-        String cleanedCertStr = certStr.replace("-----BEGIN CERTIFICATE-----", "")
-                .replace("-----END CERTIFICATE-----", "")
-                .replaceAll("\\s", ""); // Remove newlines and spaces
+    public static X509Certificate getCertificateFromString(byte [] certBytes) throws Exception {
+//        String cleanedCertStr = certStr.replace("-----BEGIN CERTIFICATE-----", "")
+//                .replace("-----END CERTIFICATE-----", "")
+//                .replaceAll("\\s", ""); // Remove newlines and spaces
 
-        byte[] certBytes = Base64.getDecoder().decode(cleanedCertStr);
+//        byte[] certBytes = Base64.getDecoder().decode(cleanedCertStr);
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509", "BC");
         return (X509Certificate) certFactory.generateCertificate(new ByteArrayInputStream(certBytes));
     }
