@@ -203,7 +203,7 @@ public class SmartCardReader {
             System.out.println("bytearraytohex hash: " + byteArrayToHex(hash));
 
             // Verify the signature
-            boolean isVerified = verifySignature(Hex.decode("7130D2321CF0FD1FDB474A5263A3497A37CC7DFDA7AFC41C2B97398C870D58FC6D4C2726E61B86F847BE5A055F3882F0CD635F7B2D6404544CDEC57AB13CE3091E57C609712FE36EA875EE015630C30A89FFE18985F46C00DF4B2242BE3C716F5994676F6B0388E7DD74F2F0BBBCAC52A885679871A59426961D4E61BE0680F30BE10CDC44B47B71F5C3BB3000454C31F5EE59B042D9E6DA8DABFCD873A7F7A5E53F9DF474E521A7D1D5A0F16B29F51AF77D9D9D5D01434E765F420FDA5491E0894F054A94FAAF1C39D4D6A7FF8509F72F3308FA73843A23A9093CE40A237638F0F84EF56E23D29D0DC2D9F250AE4EB2B9329FDD6BB72A3589E2F00A53218A7B"), Hex.decode("48656C6C6F20576F726C64"), cert);
+            boolean isVerified = verifySignature(cert, response_data, data_to_sign.getBytes());
             System.out.println("\nSignature verified: " + isVerified);
 
             // Print the citizen information
@@ -222,38 +222,38 @@ public class SmartCardReader {
         }
     }
 
-//    public static boolean verifySignature(X509Certificate cert, byte[] signatureBytes, byte[] data) throws Exception {
-//        // BouncyCastle ile Signature instance'ı oluşturuluyor
-//
-//        Signature signature = Signature.getInstance("RSASSA-PSS");
-//        PSSParameterSpec pssSpec = new PSSParameterSpec(
-//                "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
-//        );
-//        signature.setParameter(pssSpec);
-//        PublicKey publicKey = cert.getPublicKey();
-//        signature.initVerify(publicKey);
-//
-//        // Veriyi imza doğrulama işlemine ekleyin
-//        signature.update(data);
-//
-//        // İmzanın doğruluğunu kontrol edin
-//        return signature.verify(signatureBytes);
-//    }
+    public static boolean verifySignature(X509Certificate cert, byte[] signatureBytes, byte[] data) throws Exception {
+        // BouncyCastle ile Signature instance'ı oluşturuluyor
 
-    public static boolean verifySignature(byte[] signedData, byte[] rawData, X509Certificate certificate) throws Exception
-    {
-        Security.addProvider(new BouncyCastleProvider());
+        Signature signature = Signature.getInstance("RSASSA-PSS");
+        PSSParameterSpec pssSpec = new PSSParameterSpec(
+                "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+        signature.setParameter(pssSpec);
+        PublicKey publicKey = cert.getPublicKey();
+        signature.initVerify(publicKey);
 
-        //İmzalı verinin doğrulanması
-        RSAPublicKey kdPublicKey = (RSAPublicKey) certificate.getPublicKey();
-        RSAKeyParameters rsaPublicKey = new RSAKeyParameters(false, kdPublicKey.getModulus(), kdPublicKey.getPublicExponent());
-        //SHA256withRSAandMGF1
-        SHA256Digest sha256Digest = new SHA256Digest();
-        PSSSigner pssSigner = new PSSSigner(new RSABlindedEngine(), sha256Digest, sha256Digest.getDigestSize(), PSSSigner.TRAILER_IMPLICIT);
-        pssSigner.init(false, rsaPublicKey);
-        pssSigner.update(rawData, 0, rawData.length);
-        return pssSigner.verifySignature(signedData);
+        // Veriyi imza doğrulama işlemine ekleyin
+        signature.update(data);
+
+        // İmzanın doğruluğunu kontrol edin
+        return signature.verify(signatureBytes);
     }
+
+//    public static boolean verifySignature(byte[] signedData, byte[] rawData, X509Certificate certificate) throws Exception
+//    {
+//        Security.addProvider(new BouncyCastleProvider());
+//
+//        //İmzalı verinin doğrulanması
+//        RSAPublicKey kdPublicKey = (RSAPublicKey) certificate.getPublicKey();
+//        RSAKeyParameters rsaPublicKey = new RSAKeyParameters(false, kdPublicKey.getModulus(), kdPublicKey.getPublicExponent());
+//        //SHA256withRSAandMGF1
+//        SHA256Digest sha256Digest = new SHA256Digest();
+//        PSSSigner pssSigner = new PSSSigner(new RSABlindedEngine(), sha256Digest, sha256Digest.getDigestSize(), PSSSigner.TRAILER_IMPLICIT);
+//        pssSigner.init(false, rsaPublicKey);
+//        pssSigner.update(rawData, 0, rawData.length);
+//        return pssSigner.verifySignature(signedData);
+//    }
 
     private static String byteArrayToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
